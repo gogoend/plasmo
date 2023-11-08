@@ -1,14 +1,14 @@
-import { sentenceCase } from "change-case"
 import { userInfo } from "os"
-import getPackageJson, { AbbreviatedVersion } from "package-json"
+import { sentenceCase } from "change-case"
+import getPackageJson, { type AbbreviatedVersion } from "package-json"
 
 import type { ExtensionManifestV3 } from "@plasmo/constants"
 
 import type { PackageManagerInfo } from "~features/helpers/package-manager"
 
-export const generatePackage = ({
+const _generatePackage = async ({
   name = "plasmo-extension",
-  version = "0.0.0",
+  version = "0.0.1",
   packageManager = {} as PackageManagerInfo
 }) => {
   const baseData = {
@@ -21,21 +21,21 @@ export const generatePackage = ({
     packageManager: undefined as string | undefined,
     scripts: {
       dev: "plasmo dev",
-      build: "plasmo build"
+      build: "plasmo build",
+      package: "plasmo package"
     },
     dependencies: {
-      plasmo: process.env.APP_VERSION,
-      react: "18.2.0",
-      "react-dom": "18.2.0"
+      plasmo: "workspace:*",
+      react: "*",
+      "react-dom": "*"
     } as Record<string, string>,
     devDependencies: {
-      "@plasmohq/prettier-plugin-sort-imports": "3.5.2",
-      "@types/chrome": "0.0.197",
-      "@types/node": "18.8.3",
-      "@types/react": "18.0.21",
-      "@types/react-dom": "18.0.6",
-      prettier: "2.7.1",
-      typescript: "4.8.4"
+      "@types/chrome": "*",
+      "@types/node": "*",
+      "@types/react": "*",
+      "@types/react-dom": "*",
+      prettier: "*",
+      typescript: "*"
     } as Record<string, string>,
     manifest: {
       // permissions: [] as ValidManifestPermission[],
@@ -52,10 +52,15 @@ export const generatePackage = ({
   return baseData
 }
 
-export type PackageJSON = ReturnType<typeof generatePackage> & {
+export type PackageJSON = Awaited<ReturnType<typeof _generatePackage>> & {
   homepage?: string
   contributors?: string[]
 }
+
+type GenerateArgs = Parameters<typeof _generatePackage>[0]
+
+export const generatePackage = async (p: GenerateArgs) =>
+  (await _generatePackage(p)) as PackageJSON
 
 export const resolveWorkspaceToLatestSemver = async (
   dependencies: Record<string, string>
@@ -67,10 +72,14 @@ export const resolveWorkspaceToLatestSemver = async (
       if (key === "plasmo") {
         output[key] = process.env.APP_VERSION as string
       } else if (value === "workspace:*") {
-        const remotePackageData = (await getPackageJson(key, {
-          version: "latest"
-        })) as unknown as AbbreviatedVersion
-        output[key] = remotePackageData.version
+        try {
+          const remotePackageData = (await getPackageJson(key, {
+            version: "latest"
+          })) as unknown as AbbreviatedVersion
+          output[key] = remotePackageData.version
+        } catch {
+          output[key] = value
+        }
       } else {
         output[key] = value
       }

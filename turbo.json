@@ -5,6 +5,10 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "publish": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
     "lint": {
       "outputs": []
     },
@@ -14,17 +18,6 @@
     },
     "clean": {
       "dependsOn": ["^clean"],
-      "cache": false
-    },
-    "start": {
-      "dependsOn": ["build"],
-      "outputs": ["dist/**", ".next/**"]
-    },
-    "#plasmo#publish": {
-      "dependsOn": [
-        "@plasmohq/parcel-runtime#publish",
-        "@plasmohq/parcel-resolver#publish"
-      ],
       "cache": false
     }
   }

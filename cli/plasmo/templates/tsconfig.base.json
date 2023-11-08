@@ -15,16 +15,15 @@
     "esModuleInterop": true,
     "module": "esnext",
     "resolveJsonModule": true,
-    "isolatedModules": true,
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
+    "declarationMap": false,
     "inlineSources": false,
     "moduleResolution": "node",
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "preserveWatchOutput": true,
-    "importsNotUsedAsValues": "error",
 
+    "verbatimModuleSyntax": true,
     "jsx": "preserve"
   }
 }

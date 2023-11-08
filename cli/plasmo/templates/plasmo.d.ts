@@ -2,13 +2,14 @@ declare namespace NodeJS {
   interface ProcessEnv {
     NODE_ENV: "development" | "production"
 
-    PLASMO_BROWSER:
+    PLASMO_BROWSER?:
       | "arc"
       | "brave"
       | "chrome"
       | "chromium"
       | "edge"
       | "firefox"
+      | "gecko"
       | "island"
       | "opera"
       | "plasmo"
@@ -19,10 +20,11 @@ declare namespace NodeJS {
       | "waterfox"
       | "yandex"
 
-    PLASMO_MANIFEST_VERSION: "mv2" | "mv3"
+    PLASMO_MANIFEST_VERSION?: "mv2" | "mv3"
 
-    PLASMO_TARGET:
-      | `${ProcessEnv["PLASMO_BROWSER"]}-${ProcessEnv["PLASMO_MANIFEST_VERSION"]}`
+    PLASMO_TARGET?: `${ProcessEnv["PLASMO_BROWSER"]}-${ProcessEnv["PLASMO_MANIFEST_VERSION"]}`
+
+    PLASMO_TAG?: string
   }
 }
 
@@ -31,6 +33,21 @@ declare module "*.module.less"
 declare module "*.module.scss"
 declare module "*.module.sass"
 declare module "*.module.styl"
+declare module "*.module.pcss"
+
+declare module "react:*.svg" {
+  import type { FunctionComponent, SVGProps } from "react"
+
+  const value: FunctionComponent<SVGProps<SVGSVGElement>>
+  export default value
+}
+
+declare module "*.gql"
+declare module "*.graphql"
+
+declare module "react:*"
+
+declare module "https:*"
 
 declare module "url:*" {
   const value: string

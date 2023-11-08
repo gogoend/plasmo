@@ -23,8 +23,10 @@
 </p>
 
 <p align="center">
-  English | <a href="/cli/plasmo/i18n/README.zh-CN.md">简体中文</a> | <a href="/cli/plasmo/i18n/README.vi-VN.md">Tiếng Việt</a> | <a href="/cli/plasmo/i18n/README.de-DE.md">Deutsch</a> | <a href="/cli/plasmo/i18n/README.fr-FR.md">French</a>
+  English | <a href="/cli/plasmo/i18n/README.zh-CN.md">简体中文</a> | <a href="/cli/plasmo/i18n/README.vi-VN.md">Tiếng Việt</a> | <a href="/cli/plasmo/i18n/README.de-DE.md">Deutsch</a> | <a href="/cli/plasmo/i18n/README.fr-FR.md">French</a> | <a href="/cli/plasmo/i18n/README.id-ID.md">Indonesian</a> | <a href="/cli/plasmo/i18n/README.ru-RU.md">Русский</a> | <a href="/cli/plasmo/i18n/README.tr-TR.md">Turkish</a> | <a href="/cli/plasmo/i18n/README.ja-JP.md">日本語</a>
 </p>
+
+**Production Cloud:** We've built a cloud offering for browser extensions called [Itero](https://itero.plasmo.com). Check it out if you want instant beta testing and more awesome features.
 
 # Plasmo Framework
 
@@ -34,19 +36,22 @@ The [Plasmo](https://www.plasmo.com/) Framework is a battery-packed browser exte
 
 ![CLI Demo](https://www.plasmo.com/assets/plasmo-cli-demo.gif)
 
-## Features
+## Highlighted Features
 
 - First-class [React](https://reactjs.org/) + [Typescript](https://www.typescriptlang.org/) Support
-- [Declarative development](https://docs.plasmo.com/#where-is-the-manifestjson-file)
+- [Declarative Development](https://docs.plasmo.com/framework#where-is-the-manifestjson-file)
 - [Content Scripts UI](https://docs.plasmo.com/csui)
-- [Tab Pages](https://docs.plasmo.com/browser-extension/tab-pages)
+- [Tab Pages](https://docs.plasmo.com/framework/tab-pages)
 - Live-reloading + React HMR
-- [`.env*` files](https://docs.plasmo.com/browser-extension/env)
-- Targeting [multiple browser and manifest pairs](https://docs.plasmo.com/workflows/build#with-specific-target)
-- [Remote code bundling](https://docs.plasmo.com/browser-extension/remote-code) (e.g for gtag4)
-- [Automated deployment via BPP](https://docs.plasmo.com/workflows/submit)
+- [`.env*` files](https://docs.plasmo.com/framework/env)
+- [Storage API](https://docs.plasmo.com/framework/storage)
+- [Messaging API](https://docs.plasmo.com/framework/messaging)
+- [Remote code bundling](https://docs.plasmo.com/framework/remote-code) (e.g., for Google Analytics)
+- Targeting [multiple browser and manifest pairs](https://docs.plasmo.com/framework/workflows/build#with-specific-target)
+- [Automated deployment via BPP](https://docs.plasmo.com/framework/workflows/submit)
 - Optional support for [Svelte](https://github.com/PlasmoHQ/with-svelte) and [Vue](https://github.com/PlasmoHQ/with-vue)
-- And many, many more! 🚀
+
+And many, many more! 🚀
 
 ## System Requirements
 
@@ -61,6 +66,10 @@ We have examples showcasing how one can use Plasmo with [Firebase Authentication
 ## Documentation
 
 Check out the [documentation](https://docs.plasmo.com/) to get a more in-depth view into the Plasmo Framework.
+
+## Browser Extensions Book
+
+For a more in-depth view into how browser extensions work, and how to develop them, we highly recommend Matt Frisbie's new book ["Building Browser Extensions"](https://buildingbrowserextensions.com/plasmo)
 
 ## Usage
 
@@ -84,7 +93,7 @@ You can also organize these files in their own directories:
 ```
 ext-dir
 ├───assets
-|   └───icon512.png
+|   └───icon.png
 ├───popup
 |   ├───index.tsx
 |   └───button.tsx
@@ -99,7 +108,11 @@ ext-dir
 ...
 ```
 
-Finally, you can also avoid putting source code in your root directory by putting them in a `src` sub-directory, [following this guide](https://docs.plasmo.com/customization/src). Note that `assets` and other config files will still need to be in the root directory.
+Finally, you can also avoid putting source code in your root directory by putting them in a `src` sub-directory, [following this guide](https://docs.plasmo.com/framework/customization/src). Note that `assets` and other config files will still need to be in the root directory.
+
+## Supported Browsers
+
+To see a list of supported browser targets, [please refer to our documentation here](https://docs.plasmo.com/framework/workflows/faq#what-are-the-officially-supported-browser-targets).
 
 ## Community
 
@@ -110,6 +123,34 @@ Our [Code of Conduct](./.github/CODE_OF_CONDUCT.md) applies to all Plasmo commun
 ## Contributing
 
 Please see the [contributing guidelines](https://github.com/PlasmoHQ/plasmo/blob/main/.github/CONTRIBUTING.md) to learn more.
+
+A big thanks to all of our amazing [contributors](https://github.com/PlasmoHQ/plasmo/graphs/contributors) ❤️
+
+Feel free to join the fun and send a PR!
+
+### Plasmo Framework
+
+<a href="https://github.com/PlasmoHQ/plasmo/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=PlasmoHQ/plasmo" />
+</a>
+
+### [Plasmo Examples](https://github.com/PlasmoHQ/examples)
+
+<a href="https://github.com/PlasmoHQ/examples/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=PlasmoHQ/examples" />
+</a>
+
+### [Plasmo Storage](https://github.com/PlasmoHQ/storage)
+
+<a href="https://github.com/PlasmoHQ/storage/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=PlasmoHQ/storage" />
+</a>
+
+### [Browser Platform Publisher](https://github.com/PlasmoHQ/bpp)
+
+<a href="https://github.com/PlasmoHQ/bpp/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=PlasmoHQ/bpp" />
+</a>
 
 ## Disclaimer
 

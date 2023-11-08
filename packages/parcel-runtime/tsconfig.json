@@ -1,8 +1,0 @@
-{
-  "extends": "@plasmo/config/ts/cli",
-  "include": ["src/**/*.ts"],
-  "exclude": ["dist", "node_modules"],
-  "compilerOptions": {
-    "lib": ["WebWorker", "dom"]
-  }
-}

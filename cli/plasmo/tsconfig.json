@@ -1,10 +1,10 @@
 {
-  "extends": "@plasmo/config/ts/cli.json",
+  "extends": "@plasmo/config/ts/framework.json",
   "include": [
     "src/**/*.ts",
-    "./index.d.ts",
-    "templates/**/*.ts",
-    "templates/**/*.tsx"
+    "templates/plasmo.d.ts",
+    "templates/static/**/*.ts",
+    "templates/static/**/*.tsx"
   ],
   "exclude": ["dist", "node_modules"],
   "compilerOptions": {

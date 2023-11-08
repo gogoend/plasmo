@@ -1,7 +1,12 @@
-// See https://www.plasmo.com/engineering/log/2022.04#update-2022.04.23
 import type { ManifestContentScript } from "@plasmo/constants/manifest/content-script"
 
-export type PlasmoContentScript = Omit<Partial<ManifestContentScript>, "js">
+// See https://www.plasmo.com/engineering/log/2022.04#update-2022.04.23
+export type PlasmoCSConfig = Omit<Partial<ManifestContentScript>, "js">
+
+/**
+ * @deprecated use **PlasmoCSConfig** instead
+ */
+export type PlasmoContentScript = PlasmoCSConfig
 
 type Async<T> = Promise<T> | T
 
@@ -21,6 +26,8 @@ export type PlasmoCSUIProps = {
 export type PlasmoCSUIMountState = {
   document: Document
   observer: MutationObserver | null
+
+  mountInterval: NodeJS.Timer | null
 
   isMounting: boolean
   isMutated: boolean
@@ -54,21 +61,26 @@ export type PlasmoGetInlineAnchorList = Getter<NodeList>
 
 export type PlasmoMountShadowHost = (
   props: {
-    observer: MutationObserver | null
+    mountState?: PlasmoCSUIMountState
     shadowHost: Element
   } & PlasmoCSUIProps
 ) => Async<void>
 
 export type PlasmoGetShadowHostId = Getter<string, PlasmoCSUIAnchor>
 
-export type PlasmoGetStyle = Getter<HTMLStyleElement, PlasmoCSUIAnchor>
+export type PlasmoGetStyle = Getter<
+  HTMLStyleElement,
+  PlasmoCSUIAnchor & { sfcStyleContent?: string }
+>
+
+export type PlasmoGetSfcStyleContent = Getter<string>
 
 /**
  * @return a cleanup unwatch function that will be run when unmounted
  */
 export type PlasmoWatchOverlayAnchor = (
   updatePosition: () => Promise<void>
-) => () => void
+) => (() => void) | void
 
 export type PlasmoCSUIContainerProps = {
   id?: string
@@ -76,25 +88,37 @@ export type PlasmoCSUIContainerProps = {
   watchOverlayAnchor?: PlasmoWatchOverlayAnchor
 } & PlasmoCSUIProps
 
-export type PlasmoCSUIContainer = (
-  p: PlasmoCSUIContainerProps
-) => JSX.Element | Element
+export type PlasmoCSUIJSXContainer = (
+  p?: PlasmoCSUIContainerProps
+) => JSX.Element
+export type PlasmoCSUIHTMLContainer = (
+  p?: PlasmoCSUIContainerProps
+) => HTMLElement
 
 export type PlasmoCreateShadowRoot = (
   shadowHost: HTMLElement
 ) => Async<ShadowRoot>
 
-export type PlasmoRender = (
+export type PlasmoRender<T> = (
   props: {
-    createRootContainer?: (p: PlasmoCSUIAnchor) => Async<Element>
+    createRootContainer?: (p?: PlasmoCSUIAnchor) => Async<Element>
   } & PlasmoCSUIProps,
-  InlineCSUIContainer?: PlasmoCSUIContainer,
-  OverlayCSUIContainer?: PlasmoCSUIContainer
+  InlineCSUIContainer?: T,
+  OverlayCSUIContainer?: T
 ) => Async<void>
 
-export type PlasmoCSUI = {
+export type PlasmoCSUIWatch = (props: {
+  render: (anchor: PlasmoCSUIAnchor) => Async<void>
+  observer: {
+    start: (render: (anchor?: PlasmoCSUIAnchor) => void) => void
+    mountState: PlasmoCSUIMountState
+  }
+}) => void
+
+export type PlasmoCSUI<T> = {
   default: any
   getStyle: PlasmoGetStyle
+  getSfcStyleContent: PlasmoGetSfcStyleContent
   getShadowHostId: PlasmoGetShadowHostId
 
   getOverlayAnchor: PlasmoGetOverlayAnchor
@@ -108,5 +132,8 @@ export type PlasmoCSUI = {
   createShadowRoot: PlasmoCreateShadowRoot
   watchOverlayAnchor: PlasmoWatchOverlayAnchor
   mountShadowHost: PlasmoMountShadowHost
-  render: PlasmoRender
+
+  render: PlasmoRender<T>
+
+  watch: PlasmoCSUIWatch
 }

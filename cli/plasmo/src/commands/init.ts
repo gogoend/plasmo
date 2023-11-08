@@ -1,8 +1,10 @@
-import { paramCase } from "change-case"
 import { resolve } from "path"
 import { cwd } from "process"
+import { paramCase } from "change-case"
 
-import { ensureWritableAndEmpty, hasFlag, vLog } from "@plasmo/utils"
+import { hasFlag } from "@plasmo/utils/flags"
+import { ensureWritableAndEmpty } from "@plasmo/utils/fs"
+import { vLog } from "@plasmo/utils/logging"
 
 import { getCommonPath } from "~features/extension-devtools/common-path"
 import { getPackageManager } from "~features/helpers/package-manager"

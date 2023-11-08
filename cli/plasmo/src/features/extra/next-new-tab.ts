@@ -1,9 +1,10 @@
-import { sentenceCase } from "change-case"
-import { copy, emptyDir, readJson, writeJson } from "fs-extra"
 import { mkdir } from "fs/promises"
 import { resolve } from "path"
+import { sentenceCase } from "change-case"
+import { copy, emptyDir, readJson, writeJson } from "fs-extra"
 
-import { fileExists, sLog, vLog } from "@plasmo/utils"
+import { isAccessible } from "@plasmo/utils/fs"
+import { sLog, vLog } from "@plasmo/utils/logging"
 
 import { getCommonPath } from "~features/extension-devtools/common-path"
 import type { PackageJSON } from "~features/extension-devtools/package-file"
@@ -27,7 +28,7 @@ export const nextNewTab = async () => {
 
   const { default: chalk } = await import("chalk")
 
-  if (!(await fileExists(out))) {
+  if (!(await isAccessible(out))) {
     throw new Error(
       `${chalk.bold(
         "out"
@@ -40,7 +41,7 @@ export const nextNewTab = async () => {
   const packageData: PackageJSON = await readJson(packageFilePath)
 
   const extensionDirectory = resolve(projectDirectory, "extension")
-  if (await fileExists(extensionDirectory)) {
+  if (await isAccessible(extensionDirectory)) {
     const {
       default: { prompt }
     } = await import("inquirer")
@@ -61,7 +62,7 @@ export const nextNewTab = async () => {
   }
 
   await mkdir(extensionDirectory)
-  await copy(out, extensionDirectory, { recursive: true })
+  await copy(out, extensionDirectory)
   vLog("Extension created at:", extensionDirectory)
 
   await stripUnderscore(extensionDirectory)

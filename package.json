@@ -3,9 +3,9 @@
   "private": true,
   "workspaces": [
     "cli/*",
+    "api/*",
+    "core/*",
     "packages/*",
-    "templates/*",
-    "extensions/*",
     "examples/*"
   ],
   "scripts": {
@@ -13,15 +13,21 @@
     "build": "turbo run build",
     "build:cli": "turbo run build --filter=plasmo",
     "build:packages": "turbo run build --filter \"./packages/**\"",
-    "build:examples": "pnpm --filter \"./examples/**\" --parallel -r build",
+    "build:api": "turbo run build --filter \"./api/**\"",
+    "build:core": "turbo run build --filter \"./core/**\"",
+    "build:examples": "pnpm --filter \"./examples/**\" -r build",
     "publish:packages": "pnpm --filter \"./packages/**\" publish",
-    "publish:parcel": "pnpm --filter \"./packages/parcel-*\" publish",
+    "publish:api": "pnpm --filter \"./api/**\" publish",
+    "publish:core": "pnpm --filter \"./core/**\" publish",
     "publish:cli": "pnpm --filter \"./cli/*\" publish",
-    "publish:cli:canary": "pnpm --filter \"./cli/*\" publish --no-git-checks --tag canary",
+    "publish:cli:lab": "pnpm --filter \"./cli/*\" publish --no-git-checks --tag lab",
+    "publish:lab": "run-s publish:packages publish:cli:lab",
+    "format": "prettier --write \"**/*.{ts,tsx,md,mjs}\"",
     "### version script usage example": "pnpm v:cli patch",
-    "v:packages": "pnpm --filter \"./packages/**\" --parallel -r exec pnpm version",
-    "v:parcel": "pnpm --filter \"./packages/parcel-*\" --parallel -r exec pnpm version",
-    "v:cli": "pnpm --filter \"./cli/*\" --parallel -r exec pnpm version"
+    "v:packages": "pnpm --filter \"./packages/**\" --parallel -r exec pnpm version --commit-hooks false --git-tag-version false --workspaces-update",
+    "v:core": "pnpm --filter \"./core/**\" --parallel -r exec pnpm version --commit-hooks false --git-tag-version false --workspaces-update",
+    "v:api": "pnpm --filter \"./api/**\" --parallel -r exec pnpm version --commit-hooks false --git-tag-version false --workspaces-update",
+    "v:cli": "pnpm --filter \"./cli/**\" --parallel -r exec pnpm version --commit-hooks false --git-tag-version false --workspaces-update"
   },
   "pnpm": {
     "overrides": {
@@ -30,30 +36,30 @@
     }
   },
   "devDependencies": {
-    "@plasmohq/prettier-plugin-sort-imports": "workspace:*",
     "@plasmohq/rps": "workspace:*",
-    "@types/archiver": "5.3.1",
-    "@types/fs-extra": "9.0.13",
-    "@types/inquirer": "9.0.2",
-    "@types/node": "18.11.0",
+    "@ianvs/prettier-plugin-sort-imports": "4.1.0",
+    "@types/fs-extra": "11.0.1",
+    "@types/inquirer": "9.0.3",
+    "@types/node": "20.4.2",
     "@types/node-rsa": "1.1.1",
-    "@types/react": "18.0.21",
-    "@types/react-dom": "18.0.6",
-    "@types/semver": "7.3.12",
-    "@types/sharp": "0.31.0",
-    "@types/uuid": "8.3.4",
-    "esbuild": "0.15.11",
-    "eslint": "8.25.0",
-    "eslint-config-prettier": "8.5.0",
-    "eslint-plugin-react": "7.31.10",
-    "fs-extra": "10.1.0",
-    "prettier": "2.7.1",
-    "tsup": "6.3.0",
-    "turbo": "1.5.6"
+    "@types/react": "18.2.15",
+    "@types/react-dom": "18.2.7",
+    "@types/semver": "7.5.0",
+    "@types/uuid": "9.0.2",
+    "@types/ws": "8.5.5",
+    "esbuild": "0.18.13",
+    "eslint": "8.45.0",
+    "eslint-config-prettier": "8.8.0",
+    "eslint-plugin-react": "7.32.2",
+    "fs-extra": "11.1.1",
+    "prettier": "3.0.0",
+    "sharp": "0.32.3",
+    "tsup": "7.1.0",
+    "turbo": "1.10.7"
   },
   "engines": {
-    "npm": ">=7.0.0",
-    "node": ">=16.0.0"
+    "npm": ">=9.5.0",
+    "node": ">=18.0.0"
   },
-  "packageManager": "pnpm@7.13.5"
+  "packageManager": "pnpm@8.6.5"
 }

@@ -1,8 +1,12 @@
-import { copy, ensureDir, existsSync } from "fs-extra"
 import { basename, resolve } from "path"
+import { copy, ensureDir } from "fs-extra"
 import sharp from "sharp"
 
-import { vLog, wLog } from "@plasmo/utils"
+import { find } from "@plasmo/utils/array"
+import { isAccessible } from "@plasmo/utils/fs"
+import { vLog, wLog } from "@plasmo/utils/logging"
+
+import { getFlagMap } from "~features/helpers/flag"
 
 import type { CommonPath } from "./common-path"
 
@@ -19,11 +23,27 @@ const baseIconNames = [
   ...getIconNameVariants(1024)
 ]
 
-// We pick env based icon first, then plain icon
-const getPrioritizedIconPaths = (iconNames = baseIconNames) =>
-  iconNames
-    .map((name) => [`${name}.${process.env.NODE_ENV}.png`, `${name}.png`])
+/**
+ * We pick icon in this order
+ * 1. tag based icon
+ * 2. env and tag based icon
+ * 3. plain icon
+ *
+ * */
+const getPrioritizedIconPaths = (iconNames = baseIconNames) => {
+  const flagMap = getFlagMap()
+
+  return iconNames
+    .map((name) => [
+      `${name}.${flagMap.tag}.${process.env.NODE_ENV}.png`,
+      `${name}.${process.env.NODE_ENV}.png`,
+      `${name}.${flagMap.tag}.png`,
+      `${name}.png`
+    ])
     .flat()
+}
+
+const iconSizeList = [128, 64, 48, 32, 16]
 
 // Use this to cache the path resolving result
 const iconState = {
@@ -50,7 +70,7 @@ export async function generateIcons({
     )
   }
 
-  const baseIconPath = iconState.baseIconPaths.find(existsSync)
+  const baseIconPath = await find(iconState.baseIconPaths, isAccessible)
 
   if (baseIconPath === undefined) {
     wLog("No icon found in assets directory")
@@ -60,11 +80,12 @@ export async function generateIcons({
   await ensureDir(genAssetsDirectory)
 
   const baseIcon = sharp(baseIconPath)
+  const baseIconBuffer = await baseIcon.toBuffer()
 
   vLog(`${baseIconPath} found, creating resized icons`)
 
   await Promise.all(
-    [128, 64, 48, 32, 16].map((width) => {
+    iconSizeList.map(async (width) => {
       if (iconState.devProvidedIcons[width] === undefined) {
         const devIconPath = getPrioritizedIconPaths(getIconNameVariants(width))
         iconState.devProvidedIcons[width] = devIconPath.map((name) =>
@@ -72,7 +93,10 @@ export async function generateIcons({
         )
       }
 
-      const devProvidedIcon = iconState.devProvidedIcons[width].find(existsSync)
+      const devProvidedIcon = await find(
+        iconState.devProvidedIcons[width],
+        isAccessible
+      )
 
       const generatedIconPath = resolve(
         genAssetsDirectory,
@@ -87,7 +111,7 @@ export async function generateIcons({
             return sharp(devProvidedIcon).grayscale().toFile(generatedIconPath)
           }
         } else {
-          return baseIcon
+          return sharp(Buffer.from(baseIconBuffer))
             .resize({ width, height: width })
             .greyscale(!basename(baseIconPath).includes(".development."))
             .toFile(generatedIconPath)
@@ -95,7 +119,9 @@ export async function generateIcons({
       } else {
         return devProvidedIcon !== undefined
           ? copy(devProvidedIcon, generatedIconPath)
-          : baseIcon.resize({ width, height: width }).toFile(generatedIconPath)
+          : sharp(Buffer.from(baseIconBuffer))
+              .resize({ width, height: width })
+              .toFile(generatedIconPath)
       }
     })
   )

@@ -1,19 +1,20 @@
-import { readJson } from "fs-extra"
 import { resolve } from "path"
 import { cwd } from "process"
+import { readJson } from "fs-extra"
 import semver from "semver"
 
-import { assertUnreachable, fileExists } from "@plasmo/utils"
+import { assertUnreachable } from "@plasmo/utils/assert"
+import { isAccessible } from "@plasmo/utils/fs"
 
-import type { BaseFactory } from "./base"
+import { type PlasmoManifest } from "./base"
 
 const supportedUiLibraries = ["react", "svelte", "vue", "vanilla"] as const
 
-type SupportedUiLibraryName = typeof supportedUiLibraries[number]
+type SupportedUiLibraryName = (typeof supportedUiLibraries)[number]
 
-const supportedUiExt = [".tsx", ".svelte", ".vue"] as const
+const supportedUiExt = [".tsx", ".svelte", ".vue", ".jsx"] as const
 
-export type SupportedUiExt = typeof supportedUiExt[number]
+export type SupportedUiExt = (typeof supportedUiExt)[number]
 
 const supportedUiExtSet = new Set(supportedUiExt)
 
@@ -28,10 +29,10 @@ export type UiLibrary = {
 
 const supportedMountExt = [".ts", ".tsx"] as const
 
-export type ScaffolderMountExt = typeof supportedMountExt[number]
+export type ScaffolderMountExt = (typeof supportedMountExt)[number]
 
 export type UiExtMap = {
-  uiExt: SupportedUiExt
+  uiExts: SupportedUiExt[]
   mountExt: ScaffolderMountExt
 }
 
@@ -54,7 +55,7 @@ const getMajorVersion = async (version: string) => {
 }
 
 export const getUiLibrary = async (
-  plasmoManifest: BaseFactory
+  plasmoManifest: PlasmoManifest
 ): Promise<UiLibrary> => {
   const dependencies = plasmoManifest.dependencies ?? {}
 
@@ -90,7 +91,7 @@ export const getUiLibrary = async (
     uiLibraryPath
   )
 
-  if (!(await fileExists(staticPath))) {
+  if (!(await isAccessible(staticPath))) {
     throw new Error(uiLibraryError)
   }
 
@@ -107,22 +108,22 @@ export const getUiExtMap = (
   switch (uiLibraryName) {
     case "svelte":
       return {
-        uiExt: ".svelte",
+        uiExts: [".svelte"],
         mountExt: ".ts"
       }
     case "vue":
       return {
-        uiExt: ".vue",
+        uiExts: [".vue"],
         mountExt: ".ts"
       }
     case "react":
       return {
-        uiExt: ".tsx",
+        uiExts: [".tsx", ".jsx"],
         mountExt: ".tsx"
       }
     case "vanilla":
       return {
-        uiExt: ".tsx",
+        uiExts: [".tsx", ".jsx"],
         mountExt: ".ts"
       }
     default:

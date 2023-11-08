@@ -1,13 +1,20 @@
-import { aLog, eLog, getFlag, hasFlag, iLog, vLog } from "@plasmo/utils"
+import {
+  BuildSocketEvent,
+  getBuildSocket
+} from "@plasmo/framework-shared/build-socket"
+import { getFlag, isVerbose } from "@plasmo/utils/flags"
+import { eLog, iLog, sLog, vLog } from "@plasmo/utils/logging"
 
 import { getBundleConfig } from "~features/extension-devtools/get-bundle-config"
 import { createProjectWatcher } from "~features/extension-devtools/project-watcher"
+import { checkNewVersion } from "~features/framework-update/version-tracker"
 import { createParcelBuilder } from "~features/helpers/create-parcel-bundler"
 import { printHeader } from "~features/helpers/print"
 import { createManifest } from "~features/manifest-factory/create-manifest"
 
 async function dev() {
   printHeader()
+  await checkNewVersion()
 
   process.env.NODE_ENV = "development"
 
@@ -16,30 +23,25 @@ async function dev() {
 
   iLog("Starting the extension development server...")
 
-  const bundleConfig = getBundleConfig()
-
-  const plasmoManifest = await createManifest(bundleConfig)
-
-  const projectWatcher = await createProjectWatcher(plasmoManifest)
-
   const { default: getPort } = await import("get-port")
 
   const [servePort, hmrPort] = await Promise.all([
     getPort({ port: parseInt(rawServePort) }),
     getPort({ port: parseInt(rawHmrPort) })
   ])
+  const buildWatcher = getBuildSocket(hmrPort)
 
   vLog(`Starting dev server on ${servePort}, HMR on ${hmrPort}...`)
 
-  const bundler = await createParcelBuilder(plasmoManifest.commonPath, {
+  const bundleConfig = getBundleConfig()
+
+  const plasmoManifest = await createManifest(bundleConfig)
+
+  const projectWatcher = await createProjectWatcher(plasmoManifest)
+
+  const bundler = await createParcelBuilder(plasmoManifest, {
     logLevel: "verbose",
-    defaultTargetOptions: {
-      sourceMaps: !hasFlag("--no-source-maps"),
-      engines: {
-        browsers: ["last 1 Chrome version"]
-      },
-      distDir: plasmoManifest.commonPath.distDirectory
-    },
+    shouldBundleIncrementally: true,
     serveOptions: {
       host: "localhost",
       port: servePort
@@ -47,8 +49,7 @@ async function dev() {
     hmrOptions: {
       host: "localhost",
       port: hmrPort
-    },
-    env: plasmoManifest.publicEnv.extends(bundleConfig).data
+    }
   })
 
   const { default: chalk } = await import("chalk")
@@ -63,29 +64,39 @@ async function dev() {
     }
 
     if (event.type === "buildSuccess") {
-      iLog(`✨ Extension reloaded in ${event.buildTime}ms!`)
+      sLog(`Extension re-packaged in ${chalk.bold(event.buildTime)}ms! 🚀`)
+
       await plasmoManifest.postBuild()
+
+      buildWatcher.broadcast(BuildSocketEvent.BuildReady)
     } else if (event.type === "buildFailure") {
+      if (!isVerbose()) {
+        eLog(
+          chalk.redBright(
+            `Build failed. To debug, run ${chalk.bold("plasmo dev --verbose")}.`
+          )
+        )
+      }
       event.diagnostics.forEach((diagnostic) => {
         eLog(chalk.redBright(diagnostic.message))
         if (diagnostic.stack) {
-          aLog(diagnostic.stack)
+          vLog(diagnostic.stack)
         }
 
         diagnostic.hints?.forEach((hint) => {
-          aLog(hint)
+          vLog(hint)
         })
 
         diagnostic.codeFrames?.forEach((codeFrame) => {
           if (codeFrame.code) {
-            aLog(codeFrame.code)
+            vLog(codeFrame.code)
           }
           codeFrame.codeHighlights.forEach((codeHighlight) => {
             if (codeHighlight.message) {
-              aLog(codeHighlight.message)
+              vLog(codeHighlight.message)
             }
 
-            aLog(
+            vLog(
               chalk.underline(
                 `${codeFrame.filePath}:${codeHighlight.start.line}:${codeHighlight.start.column}`
               )
@@ -94,6 +105,7 @@ async function dev() {
         })
       })
     }
+    process.env.__PLASMO_FRAMEWORK_INTERNAL_WATCHER_STARTED = "true"
   })
 
   const cleanup = () => {

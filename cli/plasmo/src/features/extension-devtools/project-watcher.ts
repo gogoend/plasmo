@@ -1,16 +1,19 @@
-import { Event, subscribe } from "@parcel/watcher"
+import { subscribe, type Event } from "@parcel/watcher"
 
-import { PARCEL_WATCHER_BACKEND } from "@plasmo/constants"
-import { assertUnreachable, hasFlag, iLog, vLog, wLog } from "@plasmo/utils"
+import { PARCEL_WATCHER_BACKEND } from "@plasmo/constants/misc"
+import { assertUnreachable } from "@plasmo/utils/assert"
+import { hasFlag } from "@plasmo/utils/flags"
+import { iLog, vLog, wLog } from "@plasmo/utils/logging"
 
-import type { BaseFactory } from "~features/manifest-factory/base"
+import { updateBgswEntry } from "~features/background-service-worker/update-bgsw-entry"
+import { type PlasmoManifest } from "~features/manifest-factory/base"
 
 import { generateIcons } from "./generate-icons"
 import { WatchReason } from "./project-path"
 
 const ignore = ["node_modules", "build", ".plasmo", "coverage", ".git"]
 
-export const createProjectWatcher = async (plasmoManifest: BaseFactory) => {
+export const createProjectWatcher = async (plasmoManifest: PlasmoManifest) => {
   if (hasFlag("--impulse")) {
     return null
   }
@@ -67,7 +70,7 @@ export const handleProjectFile = async (
   type: Event["type"],
   path: string,
   reason: WatchReason,
-  plasmoManifest: BaseFactory
+  plasmoManifest: PlasmoManifest
 ) => {
   const isEnabled = type !== "delete"
 
@@ -77,6 +80,7 @@ export const handleProjectFile = async (
     }
     case WatchReason.EnvFile: {
       wLog("Environment file change detected, please restart the dev server.")
+      await plasmoManifest.updateEnv()
       return
     }
     case WatchReason.AssetsDirectory: {
@@ -91,13 +95,18 @@ export const handleProjectFile = async (
       await plasmoManifest.updatePackageData()
       return
     }
+    case WatchReason.BackgroundDirectory:
     case WatchReason.BackgroundIndex: {
-      plasmoManifest.toggleBackground(path, isEnabled)
+      await updateBgswEntry(plasmoManifest) // TODO: Make this a soft-check instead of a file-write ops
       return
     }
     case WatchReason.ContentScriptIndex:
     case WatchReason.ContentScriptsDirectory: {
       await plasmoManifest.toggleContentScript(path, isEnabled)
+
+      if (plasmoManifest.hasMainWorldScript) {
+        await updateBgswEntry(plasmoManifest)
+      }
       return
     }
 
@@ -105,6 +114,11 @@ export const handleProjectFile = async (
     case WatchReason.SandboxesDirectory:
     case WatchReason.TabsDirectory: {
       await plasmoManifest.togglePage(path, isEnabled)
+      return
+    }
+
+    case WatchReason.SidePanelIndex: {
+      plasmoManifest.toggleSidePanel(isEnabled)
       return
     }
 
@@ -146,6 +160,13 @@ export const handleProjectFile = async (
     case WatchReason.NewtabHtml: {
       await plasmoManifest.scaffolder.createPageHtml(
         "newtab",
+        isEnabled && path
+      )
+      return
+    }
+    case WatchReason.SidePanelHtml: {
+      await plasmoManifest.scaffolder.createPageHtml(
+        "sidepanel",
         isEnabled && path
       )
       return

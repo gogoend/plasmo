@@ -1,5 +1,6 @@
 import { resolve } from "path"
 
+import { getEnvFileNames } from "~features/env/env-config"
 import type { SupportedUiExt } from "~features/manifest-factory/ui-library"
 
 import type { CommonPath } from "./common-path"
@@ -15,12 +16,16 @@ export enum WatchReason {
   TabsDirectory,
 
   BackgroundIndex,
+  BackgroundDirectory,
 
   ContentScriptIndex,
   ContentScriptsDirectory,
 
   NewtabIndex,
   NewtabHtml,
+
+  SidePanelIndex,
+  SidePanelHtml,
 
   DevtoolsIndex,
   DevtoolsHtml,
@@ -38,52 +43,61 @@ export enum WatchReason {
 type DirectoryWatchTuple = [WatchReason, string]
 
 const getWatchReasonMap = (paths: string[], reason: WatchReason) =>
-  paths.reduce((output, path) => {
-    output[path] = reason
-    return output
-  }, {} as Record<string, WatchReason>)
+  paths.reduce(
+    (output, path) => {
+      output[path] = reason
+      return output
+    },
+    {} as Record<string, WatchReason>
+  )
 
 export const getProjectPath = (
   { sourceDirectory, packageFilePath, assetsDirectory }: CommonPath,
   browserTarget: string,
-  uiExt: SupportedUiExt
+  uiExts: SupportedUiExt[]
 ) => {
   /**
    * only pointing to 1 particular file path
    */
-  const getModuleList = (moduleName: string) => [
-    resolve(sourceDirectory, `${moduleName}.ts`),
-    resolve(sourceDirectory, `${moduleName}.${browserTarget}.ts`),
-    resolve(sourceDirectory, `${moduleName}${uiExt}`),
-    resolve(sourceDirectory, `${moduleName}.${browserTarget}${uiExt}`)
-  ]
+  const getModuleList = (moduleName: string) =>
+    [".ts", ...uiExts, ".js"].flatMap((ext) => [
+      resolve(sourceDirectory, `${moduleName}.${browserTarget}${ext}`),
+      resolve(sourceDirectory, `${moduleName}.${process.env.NODE_ENV}${ext}`),
+      resolve(sourceDirectory, `${moduleName}${ext}`)
+    ])
 
   /**
    * crawl index, and only care about one extension
    */
-  const getIndexList = (moduleName: string, ext = ".ts") => [
-    resolve(sourceDirectory, `${moduleName}.${browserTarget}${ext}`),
-    resolve(sourceDirectory, moduleName, `index.${browserTarget}${ext}`),
-    resolve(sourceDirectory, `${moduleName}${ext}`),
-    resolve(sourceDirectory, moduleName, `index${ext}`)
-  ]
+  const getIndexList = (moduleName: string, exts = [".ts", ".js"]) =>
+    exts.flatMap((ext) => [
+      resolve(sourceDirectory, `${moduleName}.${browserTarget}${ext}`),
+      resolve(sourceDirectory, moduleName, `index.${browserTarget}${ext}`),
 
-  const popupIndexList = getIndexList("popup", uiExt)
-  const optionsIndexList = getIndexList("options", uiExt)
-  const devtoolsIndexList = getIndexList("devtools", uiExt)
-  const newtabIndexList = getIndexList("newtab", uiExt)
+      resolve(sourceDirectory, `${moduleName}.${process.env.NODE_ENV}${ext}`),
+      resolve(
+        sourceDirectory,
+        moduleName,
+        `index.${process.env.NODE_ENV}${ext}`
+      ),
 
-  const popupHtmlList = getIndexList("popup", ".html")
-  const optionsHtmlList = getIndexList("options", ".html")
-  const devtoolsHtmlList = getIndexList("devtools", ".html")
-  const newtabHtmlList = getIndexList("newtab", ".html")
+      resolve(sourceDirectory, `${moduleName}${ext}`),
+      resolve(sourceDirectory, moduleName, `index${ext}`)
+    ])
 
-  const envFileList = [
-    resolve(sourceDirectory, ".env"),
-    resolve(sourceDirectory, ".env.local"),
-    resolve(sourceDirectory, ".env.development"),
-    resolve(sourceDirectory, ".env.development.local")
-  ]
+  const popupIndexList = getIndexList("popup", uiExts)
+  const optionsIndexList = getIndexList("options", uiExts)
+  const devtoolsIndexList = getIndexList("devtools", uiExts)
+  const newtabIndexList = getIndexList("newtab", uiExts)
+  const sidepanelIndexList = getIndexList("sidepanel", uiExts)
+
+  const popupHtmlList = getIndexList("popup", [".html"])
+  const optionsHtmlList = getIndexList("options", [".html"])
+  const devtoolsHtmlList = getIndexList("devtools", [".html"])
+  const newtabHtmlList = getIndexList("newtab", [".html"])
+  const sidepanelHtmlList = getIndexList("sidepanel", [".html"])
+
+  const envFileList = getEnvFileNames().map((f) => resolve(sourceDirectory, f))
 
   const backgroundIndexList = getIndexList("background")
 
@@ -104,25 +118,41 @@ export const getProjectPath = (
     ...getWatchReasonMap(optionsIndexList, WatchReason.OptionsIndex),
     ...getWatchReasonMap(devtoolsIndexList, WatchReason.DevtoolsIndex),
     ...getWatchReasonMap(newtabIndexList, WatchReason.NewtabIndex),
+    ...getWatchReasonMap(sidepanelIndexList, WatchReason.SidePanelIndex),
 
     ...getWatchReasonMap(popupHtmlList, WatchReason.PopupHtml),
     ...getWatchReasonMap(optionsHtmlList, WatchReason.OptionsHtml),
     ...getWatchReasonMap(devtoolsHtmlList, WatchReason.DevtoolsHtml),
-    ...getWatchReasonMap(newtabHtmlList, WatchReason.NewtabHtml)
+    ...getWatchReasonMap(newtabHtmlList, WatchReason.NewtabHtml),
+    ...getWatchReasonMap(sidepanelHtmlList, WatchReason.SidePanelHtml)
   }
 
   const contentsDirectory = resolve(sourceDirectory, "contents")
   const sandboxesDirectory = resolve(sourceDirectory, "sandboxes")
   const tabsDirectory = resolve(sourceDirectory, "tabs")
-
+  const backgroundDirectory = resolve(sourceDirectory, "background")
   const watchDirectoryEntries = [
     [WatchReason.SandboxesDirectory, sandboxesDirectory],
     [WatchReason.TabsDirectory, tabsDirectory],
     [WatchReason.ContentScriptsDirectory, contentsDirectory],
+    [WatchReason.BackgroundDirectory, backgroundDirectory],
     [WatchReason.AssetsDirectory, assetsDirectory]
   ] as Array<DirectoryWatchTuple>
 
   const knownPathSet = new Set(Object.keys(watchPathReasonMap))
+
+  const entryFileSet = new Set([
+    ...backgroundIndexList,
+    ...contentIndexList,
+    ...sandboxIndexList,
+    ...popupIndexList,
+    ...optionsIndexList,
+    ...devtoolsIndexList,
+    ...newtabIndexList,
+    ...sidepanelIndexList
+  ])
+
+  const isEntryPath = (path: string) => entryFileSet.has(path)
 
   return {
     popupIndexList,
@@ -138,9 +168,13 @@ export const getProjectPath = (
     newtabHtmlList,
 
     backgroundIndexList,
+    backgroundDirectory,
 
     contentIndexList,
     contentsDirectory,
+
+    sidepanelIndexList,
+    sidepanelHtmlList,
 
     sandboxIndexList,
     sandboxesDirectory,
@@ -149,6 +183,8 @@ export const getProjectPath = (
 
     watchPathReasonMap,
     watchDirectoryEntries,
+
+    isEntryPath,
     knownPathSet
   }
 }

@@ -1,14 +1,15 @@
-import { Parcel } from "@parcel/core"
+import { dirname, join, resolve } from "path"
 import ParcelFS from "@parcel/fs"
 import ParcelPM from "@parcel/package-manager"
-import { emptyDir } from "fs-extra"
-import { resolve } from "path"
+import { emptyDir, ensureDir, readJson, writeJson } from "fs-extra"
 
-import type { CommonPath } from "~features/extension-devtools/common-path"
+import { getFlag, hasFlag } from "@plasmo/utils/flags"
+
+import { Parcel, type ParcelOptions } from "@plasmohq/parcel-core"
+
+import type { PlasmoManifest } from "~features/manifest-factory/base"
 
 import { getPackageManager } from "./package-manager"
-
-type ParcelOptions = Partial<ConstructorParameters<typeof Parcel>[0]>
 
 const PackageInstallerMap = {
   npm: ParcelPM.Npm,
@@ -17,10 +18,38 @@ const PackageInstallerMap = {
 }
 
 export const createParcelBuilder = async (
-  commonPath: CommonPath,
-  options: ParcelOptions
+  { commonPath, bundleConfig, publicEnv }: PlasmoManifest,
+  { defaultTargetOptions = {}, ...options }: ParcelOptions
 ) => {
-  await emptyDir(commonPath.distDirectory)
+  const isProd = options.mode === "production"
+
+  if (isProd) {
+    await emptyDir(commonPath.distDirectory)
+  } else {
+    await ensureDir(commonPath.distDirectory)
+  }
+
+  process.env.__PLASMO_FRAMEWORK_INTERNAL_NO_MINIFY =
+    isProd && hasFlag("--no-minify") ? "true" : "false"
+
+  process.env.__PLASMO_FRAMEWORK_INTERNAL_SOURCE_MAPS = isProd
+    ? hasFlag("--inline-source-maps")
+      ? "inline"
+      : hasFlag("--source-maps")
+      ? "external"
+      : "none"
+    : hasFlag("--no-source-maps")
+    ? "none"
+    : "inline"
+
+  process.env.__PLASMO_FRAMEWORK_INTERNAL_NO_CS_RELOAD = hasFlag(
+    "--no-cs-reload"
+  )
+    ? "true"
+    : "false"
+
+  process.env.__PLASMO_FRAMEWORK_INTERNAL_ES_TARGET =
+    (getFlag("--es-target") as any) || "es2022"
 
   const pmInfo = await getPackageManager()
 
@@ -34,13 +63,44 @@ export const createParcelBuilder = async (
     new PackageInstaller()
   )
 
+  const baseConfig = require.resolve("@plasmohq/parcel-config")
+
+  const runConfig = join(dirname(baseConfig), "run.json")
+
+  const configJson = await readJson(baseConfig)
+
+  if (hasFlag("--bundle-buddy")) {
+    configJson.reporters = ["...", "@parcel/reporter-bundle-buddy"]
+  }
+
+  await writeJson(runConfig, configJson)
+
+  const engines = {
+    browsers:
+      bundleConfig.manifestVersion === "mv2" &&
+      bundleConfig.browser !== "firefox"
+        ? ["IE 11"]
+        : ["last 1 Chrome version"]
+  }
+
   const bundler = new Parcel({
     inputFS,
     packageManager,
     entries: commonPath.entryManifestPath,
     cacheDir: resolve(commonPath.cacheDirectory, "parcel"),
-    config: require.resolve("@plasmohq/parcel-config"),
+    config: runConfig,
     shouldAutoInstall: true,
+
+    env: publicEnv.extends(bundleConfig).data,
+
+    defaultTargetOptions: {
+      ...defaultTargetOptions,
+      engines,
+      sourceMaps:
+        process.env.__PLASMO_FRAMEWORK_INTERNAL_SOURCE_MAPS !== "none",
+      distDir: commonPath.distDirectory
+    },
+
     ...options
   })
 

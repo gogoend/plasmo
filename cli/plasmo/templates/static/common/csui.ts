@@ -1,11 +1,6 @@
-import type {
-  PlasmoCSUI,
-  PlasmoCSUIAnchor,
-  PlasmoCSUIContainer,
-  PlasmoCSUIMountState
-} from "~type"
+import type { PlasmoCSUI, PlasmoCSUIAnchor, PlasmoCSUIMountState } from "~type"
 
-async function createShadowDOM(Mount: PlasmoCSUI) {
+async function createShadowDOM<T>(Mount: PlasmoCSUI<T>) {
   const shadowHost = document.createElement("plasmo-csui")
 
   const shadowRoot =
@@ -30,14 +25,18 @@ async function createShadowDOM(Mount: PlasmoCSUI) {
 
 export type PlasmoCSUIShadowDOM = Awaited<ReturnType<typeof createShadowDOM>>
 
-async function injectAnchor(
-  Mount: PlasmoCSUI,
+async function injectAnchor<T>(
+  Mount: PlasmoCSUI<T>,
   anchor: PlasmoCSUIAnchor,
   { shadowHost, shadowRoot }: PlasmoCSUIShadowDOM,
   mountState?: PlasmoCSUIMountState
 ) {
   if (typeof Mount.getStyle === "function") {
-    shadowRoot.prepend(await Mount.getStyle(anchor))
+    const sfcStyleContent =
+      typeof Mount.getSfcStyleContent === "function"
+        ? await Mount.getSfcStyleContent()
+        : ""
+    shadowRoot.prepend(await Mount.getStyle({ ...anchor, sfcStyleContent }))
   }
 
   if (typeof Mount.getShadowHostId === "function") {
@@ -48,17 +47,17 @@ async function injectAnchor(
     await Mount.mountShadowHost({
       shadowHost,
       anchor,
-      observer: mountState?.observer
+      mountState
     })
   } else if (anchor.type === "inline") {
     anchor.element.insertAdjacentElement("afterend", shadowHost)
   } else {
-    document.body.insertAdjacentElement("beforebegin", shadowHost)
+    document.documentElement.prepend(shadowHost)
   }
 }
 
-export async function createShadowContainer(
-  Mount: PlasmoCSUI,
+export async function createShadowContainer<T>(
+  Mount: PlasmoCSUI<T>,
   anchor: PlasmoCSUIAnchor,
   mountState?: PlasmoCSUIMountState
 ) {
@@ -72,10 +71,52 @@ export async function createShadowContainer(
   return shadowDom.shadowContainer
 }
 
-export function createAnchorObserver(Mount: PlasmoCSUI) {
+const isVisible = (el: Element) => {
+  if (!el) {
+    return false
+  }
+  const elementRect = el.getBoundingClientRect()
+  const elementStyle = globalThis.getComputedStyle(el)
+
+  // console.log(elementRect, elementStyle)
+
+  if (elementStyle.display === "none") {
+    return false
+  }
+
+  if (elementStyle.visibility === "hidden") {
+    return false
+  }
+
+  if (elementStyle.opacity === "0") {
+    return false
+  }
+
+  if (
+    elementRect.width === 0 &&
+    elementRect.height === 0 &&
+    elementStyle.overflow !== "hidden"
+  ) {
+    return false
+  }
+
+  // Check if the element is irrevocably off-screen:
+  if (
+    elementRect.x + elementRect.width < 0 ||
+    elementRect.y + elementRect.height < 0
+  ) {
+    return false
+  }
+
+  return true
+}
+
+export function createAnchorObserver<T>(Mount: PlasmoCSUI<T>) {
   const mountState: PlasmoCSUIMountState = {
     document: document || window.document,
     observer: null,
+
+    mountInterval: null,
 
     isMounting: false,
     isMutated: false,
@@ -90,41 +131,6 @@ export function createAnchorObserver(Mount: PlasmoCSUI) {
     el?.id
       ? !!document.getElementById(el.id)
       : el?.getRootNode({ composed: true }) === mountState.document
-
-  const isVisible = (el: Element) => {
-    const elementRect = el.getBoundingClientRect()
-    const elementStyle = getComputedStyle(el)
-
-    if (elementStyle.display === "none") {
-      return false
-    }
-
-    if (elementStyle.visibility === "hidden") {
-      return false
-    }
-
-    if (elementStyle.opacity === "0") {
-      return false
-    }
-
-    if (
-      elementRect.width === 0 &&
-      elementRect.height === 0 &&
-      elementStyle.overflow !== "hidden"
-    ) {
-      return false
-    }
-
-    // Check if the element is irrevocably off-screen:
-    if (
-      elementRect.x + elementRect.width < 0 ||
-      elementRect.y + elementRect.height < 0
-    ) {
-      return false
-    }
-
-    return true
-  }
 
   const hasInlineAnchor = typeof Mount.getInlineAnchor === "function"
   const hasOverlayAnchor = typeof Mount.getOverlayAnchor === "function"
@@ -215,7 +221,7 @@ export function createAnchorObserver(Mount: PlasmoCSUI) {
       mountState.overlayTargetList = overlayTargetList
       if (!overlayHost) {
         renderList.push({
-          element: document.body,
+          element: document.documentElement,
           type: "overlay"
         })
       } else {
@@ -246,10 +252,18 @@ export function createAnchorObserver(Mount: PlasmoCSUI) {
     })
 
     // Need to watch the subtree for shadowDOM
-    mountState.observer.observe(document.body, {
+    mountState.observer.observe(document.documentElement, {
       childList: true,
       subtree: true
     })
+
+    mountState.mountInterval = setInterval(() => {
+      if (mountState.isMounting) {
+        mountState.isMutated = true
+        return
+      }
+      mountAnchors(render)
+    }, 142)
   }
 
   return {
@@ -258,9 +272,9 @@ export function createAnchorObserver(Mount: PlasmoCSUI) {
   }
 }
 
-export const createRender = (
-  Mount: PlasmoCSUI,
-  containers: [PlasmoCSUIContainer, PlasmoCSUIContainer],
+export const createRender = <T>(
+  Mount: PlasmoCSUI<T>,
+  containers: [T, T],
   mountState?: PlasmoCSUIMountState,
   renderFx?: (anchor: PlasmoCSUIAnchor, rootContainer: Element) => Promise<void>
 ) => {
